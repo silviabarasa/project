@@ -1,0 +1,1068 @@
+---
+title: "Credit Analysis"
+author: "Team Mavericks"
+date: "7/19/2021"
+output: html_document
+---
+## Defining the Question
+
+Lending Club is a fintech that provides range of financial products and services through a technology-driven platform in the United States. It is America’s largest lending marketplace, connecting borrowers with investors since 2007. This Platform has helped more than 3 million members get over $60 billion in personal loans so they can save money, pay down debt, and take control of their financial future. 
+
+Lending Club connects borrowers with investors. As an investor you would want to invest in people who showed a profile of having a high probability of paying you back.
+
+We will use lending data from 2007-2010 and be trying to classify and predict whether or not the borrower paid back their loan in full. 
+
+## Metric of Success
+
+To perform extensive data preparation and create models that can accurately predict whether a borrower will be able to pay back the loan in full or not.
+
+## Understanding the Context
+
+LendingClub enables borrowers to create unsecured personal loans between $1,000 and $40,000. The standard loan period is three years. Investors are able to search and browse the loan listings on LendingClub website and select loans that they want to invest in based on the information supplied about the borrower, amount of loan, loan grade, and loan purpose. Institutional investors make money from the interest on these loans. LendingClub makes money by charging borrowers an origination fee and investors a service fee.
+
+## Recording the Experimental Design
+
+* Loading the dataset
+* Performing data cleaning
+* Exploratory Data Analysis
+* Implementing the solution
+* Challenging the solution
+* Conclusion and recommendation
+
+## Data Relevance
+
+Here are what the columns represent:
+
+* credit.policy: 1 if the customer meets the credit underwriting criteria of LendingClub.com, and 0 otherwise.
+* purpose: The purpose of the loan (takes values "creditcard", "debtconsolidation", "educational", "majorpurchase", "smallbusiness", and "all_other").
+* int.rate: The interest rate of the loan, as a proportion (a rate of 11% would be stored as 0.11). Borrowers judged by LendingClub.com to be more risky are assigned higher interest rates.
+* installment: The monthly installments owed by the borrower if the loan is funded.
+* log.annual.inc: The natural log of the self-reported annual income of the borrower.
+* dti: The debt-to-income ratio of the borrower (amount of debt divided by annual income).
+* fico: The FICO credit score of the borrower.
+* days.with.cr.line: The number of days the borrower has had a credit line.
+* revol.bal: The borrower's revolving balance (amount unpaid at the end of the credit card billing cycle).
+* revol.util: The borrower's revolving line utilization rate (the amount of the credit line used relative to total credit available).
+* inq.last.6mths: The borrower's number of inquiries by creditors in the last 6 months.
+* delinq.2yrs: The number of times the borrower had been 30+ days past due on a payment in the past 2 years.
+* pub.rec: The borrower's number of derogatory public records (bankruptcy filings, tax liens, or judgments).
+* not.fully.paid : if a borrower is able to pay back the loan or not
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the data
+
+```{r}
+#Loading our data
+loan<-read.csv("C:/Users/Silvia/Documents/R module3 Core/week4/loan_data.csv")
+```
+
+## Previewing the data
+
+```{r}
+#Previewing the first six entries of our dataset
+head(loan)
+```
+
+```{r}
+#Previewing the last 6 entries of our dataset
+tail(loan)
+```
+
+
+```{r}
+#Previewing the columns of our dataset
+names(loan)
+```
+```{r}
+#Previewing the datatypes of our dataset
+str(loan)
+```
+```{r}
+#Checking for the shape of our dataset
+dim(loan)
+```
+```{r}
+#Checking for descriptive statistics and Null variables
+#And datatypes
+summary(loan)
+```
+* From the summary, we can deduce the following from the data:
+
+1. We have 9578 records and 14 attributes.
+2. Looking at the ranges around the summary statistics of our numeric variables, we see that they are measured in different units hence we will need to scale later
+
+## Data Cleaning
+
+```{r}
+#Checking for null values
+colSums(is.na(loan))
+```
+
+```{r}
+#Checking for duplicates
+sum(duplicated(loan))
+```
+***checking for outliers***
+
+```{r}
+# prepare the data
+interest <- loan$int.rate
+installment<- loan$installment
+annual<- loan$log.annual.inc
+dti<- loan$dti
+fico<- loan$fico
+cr<- loan$days.with.cr.line
+revol<- loan$revol.bal
+util<- loan$revol.util
+```
+
+
+
+```{r}
+boxplot(interest, installment, annual, dti,
+main = "Multiple boxplots for comparison",
+at = c(1,2,3,4),
+names = c("interest", "installment", "annual","dti"),
+border = "brown",
+horizontal = FALSE,
+notch = TRUE
+)
+```
+
+```{r}
+boxplot(fico,cr,revol,util,
+main = "Multiple boxplots for comparison",
+at = c(1,2,3,4),
+names = c("fico","cr","revol","util"),
+border = "brown",
+horizontal = FALSE,
+notch = TRUE
+)
+```
+From our plots, we see that we have outliers in most of our columns but we will work with the data like that.
+
+## Exploratory Data Analysis
+### Univariate Analysis
+
+***Mean***
+```{r}
+print("The mean for numeric variables is:")
+colMeans(loan[sapply(loan,is.numeric)])
+```
+
+***Median***
+```{r}
+library(dplyr)
+loan %>% summarise_if(is.numeric,median)
+```
+
+**Mode**
+```{r}
+#Creating a function for the mode
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+loan %>% summarise_if(is.numeric,getmode)
+```
+
+**Standard Deviation**
+
+```{r}
+loan %>% summarise_if(is.numeric,sd)
+```
+
+**Variance**
+
+```{r}
+loan %>% summarise_if(is.numeric,var)
+```
+
+### Measures of Dispersion
+
+***Minimum***
+```{r}
+#Minimum of the numeric columns
+library(dplyr)
+loan %>% summarise_if(is.numeric,min)
+```
+
+***Maximum***
+
+```{r}
+#Maximum of the columns
+loan %>% summarise_if(is.numeric,max)
+```
+
+***Range***
+
+```{r}
+loan %>% summarise_if(is.numeric,range)
+```
+
+***Quantile***
+
+```{r}
+loan %>% summarise_if(is.numeric,quantile)
+```
+
+***Summary***
+
+```{r}
+summary(loan)
+```
+
+***Barcharts***
+
+```{r}
+frequency <- table(loan$credit.policy)
+frequency
+barplot(frequency,col=c("Cyan","lightgreen"),main="Barchart for credit.policy",xlab = "credit.policy",ylab = "Total Count")
+```
+
+* We can see that most customers meet the credit underwriting criteria of LendingClub.com.
+
+```{r}
+library(ggplot2)
+ggplot(loan, aes(purpose)) + geom_bar(color = 'cyan',fill="pink",stat = "count")+theme(axis.text.x = element_text(angle=90,vjust = 0.5,hjust = 1))+ggtitle("Bar chart for purpose")
+    
+```
+* Most of the customers take loan for debt consolidation.
+
+```{r}
+frequency <- table(loan$not.fully.paid)
+frequency
+barplot(frequency,main="Barchart for if or not loan was paid in full",col=c("cyan","violet"),xlab = "Not fully paid",ylab = "Total Count")
+```
+
+* Most of the borrowers were able to fully pay back the loans.
+
+```{r}
+frequency <- table(loan$delinq.2yrs)
+frequency
+barplot(frequency,main="Barchart for delinq.2yrs",col=c("green","blue"),xlab = "delinq.2yrs",ylab = "Total Count")
+```
+
+* Most people did not go past the expected number of days for repaying their loans which is 30+ days past due on a payment in the past 2 years
+
+```{r}
+frequency <- table(loan$pub.rec)
+frequency
+barplot(frequency,main="Barchart for number of derogatory public records",col=c("pink","purple","maroon"),xlab = "number of derogatory public records",ylab = "Total Count")
+```
+
+* Most people didnot have number of derogatory public records such as (bankruptcy filings, tax liens, or judgments).
+
+***Histograms***
+
+```{r}
+library(ggplot2)
+ggplot(loan, aes(int.rate)) + geom_histogram(bins = 20, color = 'cyan') + 
+    labs(title = 'interest rate distribution', x = 'interest rate of the loan', y = 'Frequency')
+```
+* Most interest rates are between 0.10 and 0.15. 
+
+```{r}
+ggplot(loan, aes(installment)) + geom_histogram(bins = 20, color = 'cyan') + 
+    labs(title = 'Installment distribution', x = 'Installments', y = 'Frequency')
+```
+
+```{r}
+ggplot(loan, aes(log.annual.inc)) + geom_histogram(bins = 20, color = 'cyan') + 
+    labs(title = 'Log annual income distribution', x = 'log.annual.inc', y = 'Frequency')
+```
+
+```{r}
+ggplot(loan, aes(dti)) + geom_histogram(bins = 20, color = 'cyan') + 
+    labs(title = 'debt-to-income ratio of the borrower distribution', x = 'dti', y = 'Frequency')
+```
+* The debt to income ratio column is normally distributed. 
+
+```{r}
+ggplot(loan, aes(fico)) + geom_histogram(bins = 20, color = 'cyan') + 
+    labs(title = 'FICO credit score of the borrower distribution', x = 'FICO credit score of the borrower', y = 'Frequency')
+```
+```{r}
+ggplot(loan, aes(days.with.cr.line)) + geom_histogram(bins = 20, color = 'cyan') + 
+    labs(title = 'days.with.cr.line distribution', x = 'number of days the borrower has had a credit line', y = 'Frequency')
+```
+### **Bivariate Analysis**
+**Covariance**
+```{r}
+covariance <- cov(loan[sapply(loan,is.numeric)])
+covariance
+```
+**Correlation**
+```{r}
+install.packages("corrplot")
+library(corrplot)
+```
+
+
+```{r}
+#Correlation of all numeric variables
+loan.cor = cor(loan[sapply(loan,is.numeric)],method = c("spearman"))
+loan.cor
+```
+**Heat Map**
+
+```{r}
+heatmap(x=loan.cor,symm = TRUE,method="number")
+```
+**correlation plot**
+
+```{r}
+library(corrplot)
+corrplot(loan.cor, method = "square", type = "lower", diag = TRUE)
+```
+
+```{r}
+library(dplyr)
+```
+
+**installment per purpose**
+
+```{r}
+a<- loan %>% select(purpose, installment) %>% 
+  group_by(purpose)%>% 
+  summarise(summation=sum(installment))
+a
+ggplot(a, aes(x=purpose,y=summation)) + geom_bar(color = 'cyan',fill="orange",stat = "identity")+theme(axis.text.x = element_text(angle=90,vjust = 0.5,hjust = 1))+ggtitle("Bar chart for purpose vs installment")
+    
+```
+
+**installment per not.fully.paid**
+
+```{r}
+b<- loan %>% select(not.fully.paid, installment) %>% 
+  group_by(not.fully.paid)%>% 
+  summarise(summation=sum(installment))
+b
+ggplot(b, aes(x=not.fully.paid,y=summation)) + geom_bar(color = 'cyan',fill=c("violet","lightblue"),stat = "identity")+theme(axis.text.x = element_text(angle=90,vjust = 0.5,hjust = 1))+ggtitle("Bar chart for not fully paid vs installment")
+```
+
+##Sampling
+#### UnderSapmling
+
+```{r}
+library(ROSE)
+sample1 <- ovun.sample(not.fully.paid~., data = loan, method = "under", N =1533*2)$data
+# N should equal the number of the lower class * 2
+
+```
+
+
+## Implementing the Solution
+
+### Logistic Regression
+
+```{r}
+library(caret)
+```
+```{r}
+sample1$not.fully.paid=as.factor(sample1$not.fully.paid)
+print(contrasts(sample1$not.fully.paid))
+```
+```{r}
+# Get the number of observations
+n_obs <- nrow(sample1)
+
+# Shuffle row indices: permuted_rows
+permuted_rows <- sample(n_obs)
+
+# Randomly order data: Sonar
+model_shuffled <- sample1[permuted_rows, ]
+
+# Identify row to split on: split
+split <- round(n_obs * 0.8)
+
+# Create train
+train <- model_shuffled[1:split, ]
+dim(train)
+# Create test
+test <- model_shuffled[(split + 1):n_obs, ]
+dim(test)
+```
+
+
+```{r}
+glm_model <- glm(data = train, not.fully.paid ~., family = "binomial" )
+
+summary(glm_model)
+```
+
+```{r}
+# Predict on test
+p <- predict(glm_model, test, type = "response")
+
+# If p exceeds threshold of 0.5, 1 else 0
+hd_or_nohd <- ifelse(p > 0.5, 1, 0)
+
+# Convert to factor: p_class
+p_class <- factor(hd_or_nohd, levels = levels(test[["not.fully.paid"]]))
+
+
+# Create confusion matrix
+confusionMatrix(p_class, test[["not.fully.paid"]])
+```
+From looking at the above and our subsequent confusion matrix we achieve an accuracy of 61.17%.
+
+### Label encoding
+
+```{r}
+library(superml)
+print("Data before label encoding..\n")
+head(sample1)
+label <- LabelEncoder$new()
+#Label encoding
+sample1$purpose <- label$fit_transform(sample1$purpose)
+head(sample1)
+```
+
+### K-Nearest Neighbours
+
+```{r}
+# Installing Packages
+#install.packages("e1071",dependencies = TRUE, repos = #'http://cran.rstudio.com/')
+install.packages("caTools",dependencies = TRUE, repos = 'http://cran.rstudio.com/')
+install.packages("class",dependencies = TRUE, repos = 'http://cran.rstudio.com/')
+```
+
+```{r}
+# Loading package
+#library(e1071)
+library(caTools)
+library(class)
+#require(class)
+```
+```{r}
+# Splitting data into train
+# and test data
+split <- sample.split(sample1, SplitRatio = 0.8)
+train_cl <- subset(sample1, split == "TRUE")
+test_cl <- subset(sample1, split == "FALSE")
+dim(train_cl)
+dim(test_cl)
+```
+```{r}
+# Feature Scaling
+train_scale <- scale(train_cl[, 1:13])
+test_scale <- scale(test_cl[, 1:13])
+```
+
+```{r}
+# Fitting KNN Model 
+# to training dataset
+classifier_knn <- knn(train = train_scale,
+                      test = test_scale,
+                      cl = train_cl$not.fully.paid,
+                      k = 1)
+classifier_knn
+```
+```{r}
+# Confusion Matrix
+cm <- table(test_cl$not.fully.paid, classifier_knn)
+cm
+  
+# Model Evaluation - Choosing K
+# Calculate out of Sample error
+misClassError <- mean(classifier_knn != test_cl$not.fully.paid)
+print(paste('Accuracy =', 1-misClassError))
+  
+# K = 3
+classifier_knn <- knn(train = train_scale,
+                      test = test_scale,
+                      cl = train_cl$not.fully.paid,
+                      k = 5)
+misClassError <- mean(classifier_knn != test_cl$not.fully.paid)
+print(paste('Accuracy =', 1-misClassError))
+```
+* knn model gives us an accuracy of 56.16% 
+
+### SVM MODEL
+
+```{r}
+# So, 70% of the data is used for training and the remaining 30% is #for testing the model.
+# - The “list” parameter is for whether to return a list or matrix. 
+# We are passing FALSE for not returning a list
+# 
+intrain <- createDataPartition(y = sample1$not.fully.paid, p= 0.8, list = FALSE)
+training <- sample1[intrain,]
+testing <- sample1[-intrain,]
+```
+
+```{r}
+#Changing our target variable to factor
+training[["not.fully.paid"]] = factor(training[["not.fully.paid"]])
+```
+
+```{r}
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+svm_Linear <- train(not.fully.paid ~., data = training, method = "svmLinear",
+trControl=trctrl,
+preProcess = c("center", "scale"),
+tuneLength = 10)
+```
+
+```{r}
+# Now checking for our accuracy of our model by using a confusion matrix 
+# ---
+# We can use the predict() method for predicting results as shown below. 
+# We pass 2 arguements, our trained model and our testing data frame.
+# ---
+# 
+test_pred <- predict(svm_Linear, newdata = testing)
+
+```
+
+```{r}
+# Now checking for our accuracy of our model by using a confusion matrix 
+# ---
+# 
+confusionMatrix(table(test_pred, testing$not.fully.paid))
+```
+Our SVM model achieves an accuracy of 63.4% with a 95% Confidence interval of (0.5944, 0.6722).
+
+### Naive Bayes
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(caret)#confusionMatrix
+library(caretEnsemble)
+library(psych)
+library(Amelia)#missmap
+library(mice) #mice
+library(GGally) #ggpairs
+library(rpart)
+library(randomForest)
+library(tidyverse)
+```
+
+```{r}
+# describing the data
+summary(sample1)
+```
+
+```{r}
+# We convert the output variable into a categorical variable
+sample1$not.fully.paid <- factor(sample1$not.fully.paid)
+```
+
+```{r}
+# We visualize our dataset by checking how many missing values
+missmap(sample1)
+```
+
+```{r}
+# Splitting data into training and test data sets
+# ---
+# 
+indxTrain <- caret::createDataPartition(y =sample1$not.fully.paid,p = 0.75,list = FALSE)
+training <- sample1[indxTrain,]
+training
+testing1 <- sample1[-indxTrain,]
+
+```
+
+```{r}
+# Checking dimensions of the split
+prop.table(table(sample1$not.fully.paid)) * 100
+prop.table(table(sample1$not.fully.paid)) * 100
+prop.table(table(sample1$not.fully.paid)) * 100
+```
+
+```{r}
+# Comparing the not.fully.paid of the training and testing phase
+# Creating objects x which holds the predictor variables and y which holds the response variables
+# ---
+#
+x = training[,-14]
+y = training$not.fully.paid
+```
+
+```{r}
+# Loading our inbuilt e1071 package that holds the Naive Bayes function.
+library(e1071)
+```
+
+```{r}
+# Now building our model 
+model = train(x,y,'nb',trControl=trainControl(method='cv',number=10))
+```
+
+```{r}
+# Model Evalution
+# Predicting our testing set
+# 
+Predict <- predict(model,newdata = testing1 )
+```
+
+```{r}
+# Getting the confusion matrix to see accuracy value and other parameter values
+confusionMatrix(Predict, testing1$not.fully.paid)
+```
+* Our naive bayes model gives us an accuracy of 59.27% with a 95% CI of  (0.5569, 0.6277)
+
+### Decision Trees
+
+```{r}
+library(rpart.plot)
+library(mlbench)
+library(rpart)
+```
+```{r}
+names(sample1)
+```
+
+```{r}
+# Listing the variables we'll use.
+cont <- sample1[,c("not.fully.paid","int.rate","installment","log.annual.inc","dti","fico","days.with.cr.line","revol.bal","revol.util")]
+```
+
+
+```{r}
+loandt <- rpart(not.fully.paid ~ int.rate + installment + log.annual.inc + dti + fico +  days.with.cr.line + revol.bal + revol.util , data = cont, method  ="class")
+rpart.plot(loandt)
+```
+
+### Random Forest
+
+```{r}
+set.seed(100)
+id<- sample(2,nrow(sample1),prob =c(0.8,0.2),replace = T)
+traindf<- sample1[id==1,]
+testdf<- sample1[id==2,]
+library(randomForest)
+dfforest <- randomForest(not.fully.paid ~. ,data=traindf)
+dfforest
+
+```
+
+```{r}
+predforest <- predict(dfforest,testdf,type="class")
+```
+
+```{r}
+confusionMatrix(table(predforest,testdf$not.fully.paid))
+```
+
+```{r}
+ranTree=table(predforest,testdf$not.fully.paid)
+ranTree
+```
+
+```{r}
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(ranTree)
+```
+* Random forest model had an accuracy of 58.05% and a 95% CI of (0.5408, 0.6195)
+
+##### Feature Importances
+
+```{r}
+importance(dfforest)
+```
+
+```{r}
+important <- importance(dfforest)
+important
+Important_Features <- data.frame(Feature = row.names(important), Importance = important[, 1])
+Important_Features
+```
+
+```{r}
+plot_ <- ggplot(Important_Features, 
+    aes(x= reorder(Feature,
+Importance) , y = Importance) ) +
+geom_bar(stat = "identity", 
+        fill = "#800080") +
+coord_flip() +
+theme_light(base_size = 20) +
+xlab("") + 
+ylab("Importance")+
+ggtitle("Important Features in Random Forest\n") +
+theme(plot.title = element_text(size=18))
+ggsave("important_features.png", 
+      plot_)
+plot_
+```
+
+## Dimensionality Reduction Techniques
+### Principal Component Analysis
+* All variables to be used for dimensionality reduction should be numerical variables, hence we will convert our factor categories to numerics.
+
+```{r}
+#First we will make a copy of our sample dataset for future use
+pc <- sample1
+head(pc)
+```
+
+```{r}
+str(pc)
+```
+
+```{r}
+install.packages("factoextra",dependencies = TRUE,repos = 'http://cran.rstudio.com/')
+```
+
+```{r}
+library(factoextra)
+```
+```{r}
+#Performing pca
+pc.pca <- prcomp(pc[,c(1:4)], center = TRUE, scale. = TRUE)
+summary(pc.pca)
+```
+
+```{r}
+str(pc.pca)
+```
+* We have obtained 4 principal components. Our first PC, PC1 explains 34% Variation, our second, PC2 explains 27% PC3 explains 24%,PC4 explains 14% The 4 PCs gives us a variability proportion of upto 99%.
+
+
+## Unsupervised Learning Algorithms
+
+### Kmeans clustering
+
+```{r}
+debt <- sample1[,-14]
+loan_label <- sample1[,14]
+```
+
+**Finding optimal value of k using elbow method**
+
+```{r}
+# Silhouette method
+fviz_nbclust(sample1, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+
+```{r}
+# to reproduce the results
+# you have to use set.seed()
+set.seed(1)
+wss<- NULL
+for (i in 1:10){
+  fit = kmeans(debt,centers = i)
+  wss = c(wss, fit$tot.withinss)
+}
+plot(1:10, wss, type = "o")
+```
+We get an optimal k value of 2. We will implement this in our model.
+
+**Fit & Plot**
+
+```{r}
+fit <- kmeans(sample1[,-14], 2,)
+library(fpc)
+plotcluster(sample1[,-14],fit$cluster,pointsbyclvecd=TRUE)
+```
+```{r}
+#finding a high ratio of BSS to TSS 
+ fit$betweenss/fit$totss
+```
+
+```{r}
+# First, relabel the data with the cluster number
+sample1$cluster = fit$cluster
+for (i in 1:length(sample1$not.fully.paid)){
+  if (sample1$cluster[i] == 1){
+    sample1$label[i] = 0
+  } else {
+    sample1$label[i] = 1
+  }
+}
+
+```
+
+### Hierachichal clustering
+
+```{r}
+com2<-select(sample1,int.rate,installment,log.annual.inc,dti,fico,days.with.cr.line,revol.bal,revol.util)
+```
+
+```{r}
+# As we don’t want the hierarchical clustering result to depend to an arbitrary variable unit, 
+# we start by scaling the data using the R function scale() as follows
+co1 <- scale(com2)
+head(co1)
+```
+```{r}
+# We now use the R function hclust() for hierarchical clustering
+ # First we use the dist() function to compute the Euclidean distance between observations, 
+# d will be the first argument in the hclust() function dissimilarity matrix
+
+d <- dist(co1, method = "euclidean")
+```
+```{r}
+
+# function to compute coefficient
+ac <- function(x) {
+  ward.D2(co1, method = x)$ac
+}
+```
+
+```{r}
+# We then hierarchical clustering using the Ward's method
+# ---
+# 
+res.hc <- hclust(d, method = "ward.D2" )
+res.hc
+```
+```{r}
+# Plot the obtained dendrogram
+plot(res.hc, cex = 0.6, hang = -1)
+```
+
+#### DBSCAN
+```{r}
+# Loading the required library
+library("dbscan")
+```
+
+```{r}
+# Removing the class label 
+m2<-sample1[,c(1,2,3,4,5,6,7,8,9,10,11,12,13)]
+head(m2)
+```
+
+```{r}
+# Applying our DBSCAN algorithm
+# We want minimum 4 points with in a distance of eps(0.4)
+# 
+db1<-dbscan(m2,eps=0.4,MinPts = 4)
+```
+
+```{r}
+# Printing out the clustering results
+print(db1)
+```
+
+```{r}
+# We also plot our clusters as shown
+# ---
+# The dataset and cluster method of dbscan is used to plot the clusters.
+hullplot(m2,db1$cluster)
+```
+
+## Challenging the Solution
+### Logistic Regression
+
+```{r}
+library(caret)
+```
+
+```{r}
+imp<-select(sample1,int.rate,installment,log.annual.inc,dti,fico,days.with.cr.line,revol.bal,revol.util,pub.rec,not.fully.paid)
+```
+
+```{r}
+imp$not.fully.paid=as.factor(imp$not.fully.paid)
+print(contrasts(imp$not.fully.paid))
+```
+```{r}
+# Get the number of observations
+n_obs <- nrow(imp)
+
+# Shuffle row indices: permuted_rows
+permuted_rows <- sample(n_obs)
+
+# Randomly order data: Sonar
+model_shuffled <- imp[permuted_rows, ]
+
+# Identify row to split on: split
+split <- round(n_obs * 0.8)
+
+# Create train
+train <- model_shuffled[1:split, ]
+dim(train)
+# Create test
+test <- model_shuffled[(split + 1):n_obs, ]
+dim(test)
+```
+```{r}
+glm_model <- glm(data = train, not.fully.paid ~., family = "binomial" )
+
+summary(glm_model)
+```
+```{r}
+# Predict on test
+p <- predict(glm_model, test, type = "response")
+
+# If p exceeds threshold of 0.5, 1 else 0
+hd_or_nohd <- ifelse(p > 0.5, 1, 0)
+
+# Convert to factor: p_class
+p_class <- factor(hd_or_nohd, levels = levels(test[["not.fully.paid"]]))
+
+
+# Create confusion matrix
+confusionMatrix(p_class, test[["not.fully.paid"]])
+```
+*After using the important features our accuracy reduces from 61.17% to 56%
+
+### K-Nearest Neighbours
+
+```{r}
+# Installing Packages
+#install.packages("e1071",dependencies = TRUE, repos = #'http://cran.rstudio.com/')
+install.packages("caTools",dependencies = TRUE, repos = 'http://cran.rstudio.com/')
+install.packages("class",dependencies = TRUE, repos = 'http://cran.rstudio.com/')
+```
+
+```{r}
+# Loading package
+#library(e1071)
+library(caTools)
+library(class)
+#require(class)
+```
+
+```{r}
+# Splitting data into train
+# and test data
+split <- sample.split(imp, SplitRatio = 0.7)
+train_cl <- subset(imp, split == "TRUE")
+test_cl <- subset(imp, split == "FALSE")
+dim(train_cl)
+dim(test_cl)
+```
+```{r}
+# Feature Scaling
+train_scale <- scale(train_cl[, 1:9])
+test_scale <- scale(test_cl[, 1:9])
+```
+
+```{r}
+# Fitting KNN Model 
+# to training dataset
+classifier_knn <- knn(train = train_scale,
+                      test = test_scale,
+                      cl = train_cl$not.fully.paid,
+                      k = 1)
+classifier_knn
+```
+
+```{r}
+# Confusion Matrix
+cm <- table(test_cl$not.fully.paid, classifier_knn)
+cm
+  
+# Model Evaluation - Choosing K
+# Calculate out of Sample error
+misClassError <- mean(classifier_knn != test_cl$not.fully.paid)
+print(paste('Accuracy =', 1-misClassError))
+  
+# K = 3
+classifier_knn <- knn(train = train_scale,
+                      test = test_scale,
+                      cl = train_cl$not.fully.paid,
+                      k = 5)
+misClassError <- mean(classifier_knn != test_cl$not.fully.paid)
+print(paste('Accuracy =', 1-misClassError))
+```
+* After training the model using our important features accuracy of our knn model improved from 56.16 to 56.84%
+
+### SVM MODEL
+
+```{r}
+
+# So, 70% of the data is used for training and the remaining 30% is #for testing the model.
+# - The “list” parameter is for whether to return a list or matrix. 
+# We are passing FALSE for not returning a list
+# 
+intrain <- createDataPartition(y = imp$not.fully.paid, p= 0.7, list = FALSE)
+training <- imp[intrain,]
+testing <- imp[-intrain,]
+```
+
+```{r}
+#Changing our target variable to factor
+training[["not.fully.paid"]] = factor(training[["not.fully.paid"]])
+```
+
+```{r}
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+
+svm_Linear <- train(not.fully.paid ~., data = training, method = "svmLinear",
+trControl=trctrl,
+preProcess = c("center", "scale"),
+tuneLength = 10)
+```
+
+```{r}
+# Now checking for our accuracy of our model by using a confusion matrix 
+# ---
+# We can use the predict() method for predicting results as shown below. 
+# We pass 2 arguements, our trained model and our testing data frame.
+# ---
+# 
+test_pred <- predict(svm_Linear, newdata = testing)
+
+```
+
+```{r}
+# Now checking for our accuracy of our model by using a confusion matrix 
+# ---
+# 
+confusionMatrix(table(test_pred, testing$not.fully.paid))
+```
+* The accuracy of our svm model after using our important features was 56.75 a reduction from 63.4% before using the important features.
+
+### Random Forest
+
+```{r}
+set.seed(100)
+id<- sample(2,nrow(imp),prob =c(0.8,0.2),replace = T)
+traindf<- imp[id==1,]
+testdf<- imp[id==2,]
+library(randomForest)
+dfforest <- randomForest(not.fully.paid ~. ,data=traindf)
+dfforest
+
+```
+```{r}
+ranTree=table(predforest,testdf$not.fully.paid)
+ranTree
+```
+
+```{r}
+predforest <- predict(dfforest,testdf,type="class")
+```
+
+```{r}
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(ranTree)
+```
+* After using the important features in random forest we obtained an accuracy of 58.05% which was the same as the accuracy before using important features of 58.05%
+
+## Conclusion and Recommendation
+
+* Our best performed model was the svm with an accuracy of 63.4%
+* Most people were able to pay their loan in full.
+* The average FICO score of borrowers was 710.85.
+* The most preferred interest rate by the borrowers is 0.22.
+* The most common purpose of the loan by the borrowers is for debt consolidation.
+* most people were able to meet the loan underwriting criteria of LendingClub.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
